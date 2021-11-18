@@ -32,7 +32,8 @@ typedef struct egg e;
 typedef e *ChickenEgg;
 
 // ADD YOUR FUNCTION PROTOTYPES HERE
-void error_warning(char *words);
+
+// Functions to initialize the struct ChickenEgg:
 ChickenEgg produce_egg(FILE *fptr);
 void eat_egg(ChickenEgg egg);
 void get_magic_number(ChickenEgg egg, FILE *fptr);
@@ -44,44 +45,25 @@ void get_content_length(ChickenEgg egg, FILE *fptr);
 void get_content(ChickenEgg egg, FILE *fptr);
 void get_hash(ChickenEgg egg, FILE *fptr);
 
+// Helper functions:
+void error_warning(char *words);
+
+// Subset 0 functions:
+void list_contents_detail(char *egg_pathname);
+void list_contents(char *egg_pathname);
+
 // print the files & directories stored in egg_pathname (subset 0)
 //
 // if long_listing is non-zero then file/directory permissions, formats & sizes are also printed (subset 0)
 
 void list_egg(char *egg_pathname, int long_listing)
 {
-    FILE *fptr = fopen(egg_pathname, "r");
-    if (fptr == NULL)
-    {
-        error_warning("Cannot find current files.");
-    }
-    char ch;
-    while ((ch = fgetc(fptr)) != EOF)
-    {
-        if (ch != EGGLET_MAGIC)
-        {
-            error_warning("Incorrect egglet.");
-        }
-        // Produce a fresh egg
-        ChickenEgg egg = produce_egg(fptr);
-
-        // Case L
-        if (long_listing)
-        {
-            printf("%s", egg->permissions);
-            printf("  %c", egg->egglet_format);
-            printf("%7llu", egg->content_length);
-            printf("  %s\n", egg->pathname);
-        }
-        // Case l
-        else
-        {
-            printf("%s\n", egg->pathname);
-        }
-
-        // Eat that egg
-        eat_egg(egg);
-    }
+    // Command L
+    if (long_listing)
+        list_contents_detail(egg_pathname);
+    // Command l
+    else
+        list_contents(egg_pathname);
 }
 
 // check the files & directories stored in egg_pathname (subset 1)
@@ -159,6 +141,7 @@ void eat_egg(ChickenEgg egg)
     egg->content = NULL;
     free(egg->pathname);
     egg->pathname = NULL;
+
     free(egg);
 }
 
@@ -218,7 +201,7 @@ void get_content_length(ChickenEgg egg, FILE *fptr)
         endian <<= (8 * i);
         egg->content_length |= endian;
     }
-    printf("content_length: %llu\n", egg->content_length);
+    // printf("content_length: %llu\n", egg->content_length);
 }
 
 // Get the content
@@ -237,4 +220,57 @@ void get_hash(ChickenEgg egg, FILE *fptr)
 {
     egg->hash = fgetc(fptr);
     // printf("hash is: %hhu\n", egg->hash);
+}
+
+void list_contents_detail(char *egg_pathname)
+{
+    FILE *fptr = fopen(egg_pathname, "r");
+    if (fptr == NULL)
+    {
+        error_warning("Cannot find current files.");
+    }
+    char ch;
+    while ((ch = fgetc(fptr)) != EOF)
+    {
+        if (ch != EGGLET_MAGIC)
+        {
+            error_warning("Incorrect egglet magic.");
+        }
+        // Produce a fresh egg
+        ChickenEgg egg = produce_egg(fptr);
+
+        printf("%s", egg->permissions);
+        printf("  %c", egg->egglet_format);
+        printf("%7llu", egg->content_length);
+        printf("  %s\n", egg->pathname);
+
+        // Eat that egg
+        eat_egg(egg);
+    }
+}
+
+void list_contents(char *egg_pathname)
+{
+    FILE *fptr = fopen(egg_pathname, "r");
+    if (fptr == NULL)
+    {
+        error_warning("Cannot find current files.");
+    }
+    char ch;
+    while ((ch = fgetc(fptr)) != EOF)
+    {
+        if (ch != EGGLET_MAGIC)
+        {
+            error_warning("Incorrect egglet magic.");
+        }
+        // Produce a fresh egg
+        ChickenEgg egg = produce_egg(fptr);
+
+        // Command l
+        list_contents(egg_pathname);
+        printf("%s\n", egg->pathname);
+
+        // Eat that egg
+        eat_egg(egg);
+    }
 }
