@@ -16,20 +16,20 @@
 
 #include "chicken.h"
 
-
 // ADD ANY extra #defines HERE
-struct egg {
+struct egg
+{
     uint8_t magic_number;
     uint8_t egglet_format;
     char *permissions;
     uint16_t pathname_length;
     char *pathname;
-    long content_length;
+    uint64_t content_length;
     char *content;
     uint8_t hash;
-}; 
+};
 typedef struct egg e;
-typedef e * ChickenEgg;
+typedef e *ChickenEgg;
 
 // ADD YOUR FUNCTION PROTOTYPES HERE
 void error_warning(char *words);
@@ -48,30 +48,41 @@ void get_hash(ChickenEgg egg, FILE *fptr);
 //
 // if long_listing is non-zero then file/directory permissions, formats & sizes are also printed (subset 0)
 
-void list_egg(char *egg_pathname, int long_listing) {
+void list_egg(char *egg_pathname, int long_listing)
+{
     FILE *fptr = fopen(egg_pathname, "r");
-    if (fptr == NULL){
+    if (fptr == NULL)
+    {
         error_warning("Cannot find current files.");
     }
     char ch;
-    while ((ch = fgetc(fptr)) != EOF) {
-        if (ch != EGGLET_MAGIC) {
+    while ((ch = fgetc(fptr)) != EOF)
+    {
+        if (ch != EGGLET_MAGIC)
+        {
             error_warning("Incorrect egglet.");
         }
+        // Produce a fresh egg
         ChickenEgg egg = produce_egg(fptr);
-        if (long_listing) {
+
+        // Case L
+        if (long_listing)
+        {
             printf("%s", egg->permissions);
             printf("  %c", egg->egglet_format);
-            printf("%7ld", egg->content_length);
+            printf("%7llu", egg->content_length);
             printf("  %s\n", egg->pathname);
         }
-        else {
+        // Case l
+        else
+        {
             printf("%s\n", egg->pathname);
         }
+
+        // Eat that egg
         eat_egg(egg);
     }
 }
-
 
 // check the files & directories stored in egg_pathname (subset 1)
 //
@@ -79,19 +90,19 @@ void list_egg(char *egg_pathname, int long_listing) {
 // either, indicating the hash byte is correct, or
 // indicating the hash byte is incorrect, what the incorrect value is and the correct value would be
 
-void check_egg(char *egg_pathname) {
+void check_egg(char *egg_pathname)
+{
 }
-
 
 // extract the files/directories stored in egg_pathname (subset 2 & 3)
 
-void extract_egg(char *egg_pathname) {
+void extract_egg(char *egg_pathname)
+{
 
     // REPLACE THIS PRINTF WITH YOUR CODE
 
     printf("extract_egg called to extract egg: '%s'\n", egg_pathname);
 }
-
 
 // create egg_pathname containing the files or directories specified in pathnames (subset 3)
 //
@@ -101,7 +112,8 @@ void extract_egg(char *egg_pathname) {
 // format specifies the egglet format to use, it must be one EGGLET_FMT_6,EGGLET_FMT_7 or EGGLET_FMT_8
 
 void create_egg(char *egg_pathname, int append, int format,
-                int n_pathnames, char *pathnames[n_pathnames]) {
+                int n_pathnames, char *pathnames[n_pathnames])
+{
 
     // REPLACE THIS CODE PRINTFS WITH YOUR CODE
 
@@ -109,22 +121,24 @@ void create_egg(char *egg_pathname, int append, int format,
     printf("format = %x\n", format);
     printf("append = %d\n", append);
     printf("These %d pathnames specified:\n", n_pathnames);
-    for (int p = 0; p < n_pathnames; p++) {
+    for (int p = 0; p < n_pathnames; p++)
+    {
         printf("%s\n", pathnames[p]);
     }
 }
 
-
 // ADD YOUR EXTRA FUNCTIONS HERE
 
 // Print when error occurs
-void error_warning(char *words) {
+void error_warning(char *words)
+{
     perror(words);
     exit(1);
 }
 
 // Produce a new egg struct
-ChickenEgg produce_egg(FILE *fptr) {
+ChickenEgg produce_egg(FILE *fptr)
+{
     ChickenEgg egg = malloc(sizeof(e));
     get_magic_number(egg, fptr);
     get_egglet_format(egg, fptr);
@@ -138,8 +152,9 @@ ChickenEgg produce_egg(FILE *fptr) {
     return egg;
 }
 
-// Free the memory assigned 
-void eat_egg(ChickenEgg egg) {
+// Free the memory assigned
+void eat_egg(ChickenEgg egg)
+{
     free(egg->content);
     egg->content = NULL;
     free(egg->pathname);
@@ -148,65 +163,78 @@ void eat_egg(ChickenEgg egg) {
 }
 
 // Get the magic number
-void get_magic_number(ChickenEgg egg, FILE *fptr) {
+void get_magic_number(ChickenEgg egg, FILE *fptr)
+{
     egg->magic_number = EGGLET_MAGIC;
     // printf("magic number is: %hhu\n", egg->magic_number);
 }
 
 // Get the egglet format.
-void get_egglet_format(ChickenEgg egg, FILE *fptr) {
+void get_egglet_format(ChickenEgg egg, FILE *fptr)
+{
     egg->egglet_format = fgetc(fptr);
     // printf("egglet_format is: %c\n", egg->egglet_format);
 }
+
 // Get permissions of egg
-void get_permissions(ChickenEgg egg, FILE *fptr) {
+void get_permissions(ChickenEgg egg, FILE *fptr)
+{
     egg->permissions = calloc(sizeof(char), EGG_LENGTH_MODE + 1);
-    for (long i = 0; i < EGG_LENGTH_MODE; i++) {
+    for (long i = 0; i < EGG_LENGTH_MODE; i++)
+    {
         egg->permissions[i] = fgetc(fptr);
     }
     // printf("permissions: %s\n", egg->permissions);
 }
 
 // Get pathname_length of egg
-void get_pathname_length(ChickenEgg egg, FILE *fptr) {
+void get_pathname_length(ChickenEgg egg, FILE *fptr)
+{
     egg->pathname_length = 0;
-    int little_endian = fgetc(fptr);
+    int lil_endian = fgetc(fptr);
     int big_endian = fgetc(fptr);
-    egg->pathname_length = (big_endian << 8) | little_endian;
+    egg->pathname_length = lil_endian | (big_endian << 8);
     // printf("pathname_length is: %hu\n", egg->pathname_length);
 }
 
 // Get the pathname
-void get_pathname(ChickenEgg egg, FILE *fptr) {
-    egg->pathname = calloc(sizeof(char), egg->pathname_length + 1);
-    for (int i = 0; i < egg->pathname_length; i++) {
+void get_pathname(ChickenEgg egg, FILE *fptr)
+{
+    egg->pathname = calloc(sizeof(char), EGG_LENGTH_PATHNLEN + 1);
+    for (int i = 0; i < egg->pathname_length; i++)
+    {
         egg->pathname[i] = fgetc(fptr);
     }
     // printf("pathname is %s\n", egg->pathname);
 }
 
 // Get the content length
-void get_content_length(ChickenEgg egg, FILE *fptr) {
+void get_content_length(ChickenEgg egg, FILE *fptr)
+{
     egg->content_length = 0;
-    for (int i =0; i < EGG_LENGTH_CONTLEN; i++) {
-      long endian =fgetc(fptr);
-      endian = (endian << (i * 8));
-      egg->content_length |= endian;
+    for (int i = 0; i < EGG_LENGTH_CONTLEN; i++)
+    {
+        long endian = fgetc(fptr);
+        endian <<= (8 * i);
+        egg->content_length |= endian;
     }
-    // printf("content_length is: %7ld\n", egg->content_length);
+    printf("content_length: %llu\n", egg->content_length);
 }
 
-// Get the content 
-void get_content(ChickenEgg egg, FILE *fptr) {
+// Get the content
+void get_content(ChickenEgg egg, FILE *fptr)
+{
     egg->content = calloc(sizeof(char), egg->content_length + 1);
-    for (long i = 0; i < egg->content_length; i++) {
+    for (long i = 0; i < egg->content_length; i++)
+    {
         egg->content[i] = fgetc(fptr);
     }
-//    printf("content is: %d\n", egg->content);
+    //    printf("content is: %d\n", egg->content);
 }
 
 // Get the hash
-void get_hash(ChickenEgg egg, FILE *fptr) {
+void get_hash(ChickenEgg egg, FILE *fptr)
+{
     egg->hash = fgetc(fptr);
     // printf("hash is: %hhu\n", egg->hash);
 }
