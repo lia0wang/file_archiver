@@ -57,7 +57,7 @@ void list_contents(char *egg_pathname);
 // if long_listing is non-zero then file/directory permissions, formats & sizes are also printed (subset 0)
 
 void list_egg(char *egg_pathname, int long_listing)
-{
+{   
     // Command L
     if (long_listing)
         list_contents_detail(egg_pathname);
@@ -183,7 +183,7 @@ void get_pathname_length(ChickenEgg egg, FILE *fptr)
 // Get the pathname
 void get_pathname(ChickenEgg egg, FILE *fptr)
 {
-    egg->pathname = calloc(sizeof(char), EGG_LENGTH_PATHNLEN + 1);
+    egg->pathname = calloc(sizeof(char), egg->pathname_length + 1);
     for (int i = 0; i < egg->pathname_length; i++)
     {
         egg->pathname[i] = fgetc(fptr);
@@ -247,6 +247,7 @@ void list_contents_detail(char *egg_pathname)
         // Eat that egg
         eat_egg(egg);
     }
+    fclose(fptr);
 }
 
 void list_contents(char *egg_pathname)
@@ -267,10 +268,10 @@ void list_contents(char *egg_pathname)
         ChickenEgg egg = produce_egg(fptr);
 
         // Command l
-        list_contents(egg_pathname);
         printf("%s\n", egg->pathname);
 
         // Eat that egg
         eat_egg(egg);
     }
+    fclose(fptr);
 }
