@@ -58,7 +58,7 @@ uint8_t check_hash(ChickenEgg egg);
 // if long_listing is non-zero then file/directory permissions, formats & sizes are also printed (subset 0)
 
 void list_egg(char *egg_pathname, int long_listing)
-{   
+{
     // Command L
     if (long_listing)
         list_contents_detail(egg_pathname);
@@ -81,7 +81,7 @@ void check_egg(char *egg_pathname)
     {
         error_warning("Cannot find current files.");
     }
-    char ch;
+    int ch;
     while ((ch = fgetc(fptr)) != EOF)
     {
         if (ch != EGGLET_MAGIC)
@@ -91,12 +91,14 @@ void check_egg(char *egg_pathname)
         }
         // Produce a fresh egg
         ChickenEgg egg = produce_egg(fptr);
-        
         uint8_t computed_hash = check_hash(egg);
-        if(egg->hash == computed_hash) {
+        if (egg->hash == computed_hash)
+        {
             // 256.bin - correct hash
-            printf("%s - correct hash\n", egg->pathname);
-        } else {
+            printf("%s - correct hash, computed 0x%x egghash 0x%x\n", egg->pathname, computed_hash, egg->hash);
+        }
+        else
+        {
             // hello.sql - incorrect hash 0x19 should be 0x43
             printf("%s - incorrect hash 0x%x should be 0x%x\n", egg->pathname, computed_hash, egg->hash);
         }
@@ -249,7 +251,6 @@ void get_content(ChickenEgg egg, FILE *fptr)
 void get_hash(ChickenEgg egg, FILE *fptr)
 {
     egg->hash = fgetc(fptr);
-    // printf("hash is: %hhu\n", egg->hash);
 }
 
 void list_contents_detail(char *egg_pathname)
@@ -306,30 +307,35 @@ void list_contents(char *egg_pathname)
     fclose(fptr);
 }
 
-uint8_t check_hash(ChickenEgg egg) {
+uint8_t check_hash(ChickenEgg egg)
+{
+    uint8_t hash = 0;
 
-    uint8_t hash = egglet_hash(0, egg->magic_number);
+    hash = egglet_hash(hash, egg->magic_number);
+    hash = egglet_hash(hash, egg->egglet_format);
 
-    for(int i = 0; i < EGG_LENGTH_MODE; i++) {
+    for (int i = 0; i < EGG_LENGTH_MODE; i++)
+    {
         hash = egglet_hash(hash, egg->permissions[i]);
     }
 
-    for(int i = 0; i < EGG_LENGTH_PATHNLEN; i++) {
-        hash = egglet_hash(hash, egg->pathname_length >> (EGG_LENGTH_PATHNLEN-1-i)*8);
-    }
+    hash = egglet_hash(hash, egg->pathname_length & 0xFF);
+    hash = egglet_hash(hash, egg->pathname_length >> 8 & 0xFF);
 
-    for(int i = 0; i < EGG_LENGTH_CONTLEN; i++) {
-        hash = egglet_hash(hash, egg->content_length >> (EGG_LENGTH_CONTLEN-1-i)*8);
-    }
-
-    for(long i = 0; i < egg->pathname_length; i++) {
+    for (int i = 0; i < egg->pathname_length; i++)
+    {
         hash = egglet_hash(hash, egg->pathname[i]);
     }
 
-    for(long i = 0; i < egg->content_length; i++) {
+    for (int i = 0; i < EGG_LENGTH_CONTLEN; i++)
+    {
+        hash = egglet_hash(hash, egg->content_length >> 8 * i & 0xFF);
+    }
+
+    for (int i = 0; i < egg->content_length; i++)
+    {
         hash = egglet_hash(hash, egg->content[i]);
     }
 
     return hash;
-
 }
