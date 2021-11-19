@@ -93,7 +93,7 @@ void check_egg(char *egg_pathname)
 
         uint8_t computed_hash = check_hash(egg);
         if (egg->hash == computed_hash)
-            printf("%s - correct hash, computed 0x%x egghash 0x%x\n", egg->pathname, computed_hash, egg->hash);
+            printf("%s - correct hash\n", egg->pathname);
         else
             printf("%s - incorrect hash 0x%x should be 0x%x\n", egg->pathname, computed_hash, egg->hash);
 
@@ -255,7 +255,7 @@ void list_contents_detail(char *egg_pathname)
     {
         error_warning("Cannot find current files.");
     }
-    char ch;
+    int ch;
     while ((ch = fgetc(fptr)) != EOF)
     {
         if (ch != EGGLET_MAGIC)
@@ -283,7 +283,7 @@ void list_contents(char *egg_pathname)
     {
         error_warning("Cannot find current files.");
     }
-    char ch;
+    int ch;
     while ((ch = fgetc(fptr)) != EOF)
     {
         if (ch != EGGLET_MAGIC)
