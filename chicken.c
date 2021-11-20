@@ -327,7 +327,7 @@ void check_C(char *egg_pathname) {
     {
         if (ch != EGGLET_MAGIC)
         {
-            printf("error: incorrect first egglet byte: 0x%x should be 0x63\n", ch);
+            fprintf(stderr, "error: incorrect first egglet byte: 0x%x should be 0x%x\n", ch, EGGLET_MAGIC);
             exit(1);
         }
         // Produce a fresh egg
@@ -356,7 +356,7 @@ void extract_x(char *egg_pathname) {
     {
         if (ch != EGGLET_MAGIC)
         {
-            printf("error: incorrect first egglet byte: 0x%x should be 0x%x\n", ch, EGGLET_MAGIC);
+            fprintf(stderr, "error: incorrect first egglet byte: 0x%x should be 0x%x\n", ch, EGGLET_MAGIC);
             exit(1);
         }
         // Produce a fresh egg
@@ -415,12 +415,15 @@ int get_octal_digit(ChickenEgg egg) {
     int digit_one = 0;
     int digit_two = 0;
     int digit_three = 0;
-    for (int i = 0; i < EGG_LENGTH_MODE - 1; i++) {
-        if (i < 3)
+    for (int i = 0; i < EGG_LENGTH_MODE; i++) {
+        // -xxx 0123
+        if (i < 4)
             digit_one += array[i];
-        if (i >= 3 && i < 6)
+        // xxx 456
+        if (i > 3 && i <= 6)
             digit_two += array[i];
-        if (i >=6 && i < EGG_LENGTH_MODE - 1)
+        // xxx 789, EGG_LENGTH_MODE = 10
+        if (i > 6 && i < EGG_LENGTH_MODE)
             digit_three += array[i];
     }
     free(array);
