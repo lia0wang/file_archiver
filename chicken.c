@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 #include <assert.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -49,11 +50,16 @@ void get_hash(ChickenEgg egg, FILE *fptr);
 void error_warning(char *words);
 
 // Subset 0 functions:
-void list_contents_detail(char *egg_pathname);
-void list_contents(char *egg_pathname);
+void list_L(char *egg_pathname);
+void list_l(char *egg_pathname);
 
 // Subset 1 functions
 uint8_t check_hash(ChickenEgg egg);
+void check_C(char *egg_pathname);
+void extract_x(char *egg_pathname);
+char *get_pathname_array(ChickenEgg egg);
+int get_octal_digit(ChickenEgg egg);
+
 // print the files & directories stored in egg_pathname (subset 0)
 //
 // if long_listing is non-zero then file/directory permissions, formats & sizes are also printed (subset 0)
@@ -62,10 +68,10 @@ void list_egg(char *egg_pathname, int long_listing)
 {
     // Command L
     if (long_listing)
-        list_contents_detail(egg_pathname);
+        list_L(egg_pathname);
     // Command l
     else
-        list_contents(egg_pathname);
+        list_l(egg_pathname);
 }
 
 // check the files & directories stored in egg_pathname (subset 1)
@@ -76,41 +82,16 @@ void list_egg(char *egg_pathname, int long_listing)
 
 void check_egg(char *egg_pathname)
 {
-    // Call egglet_hash to calculate hash values.
-    FILE *fptr = fopen(egg_pathname, "r");
-    if (fptr == NULL)
-        error_warning("Cannot find current files.");
-    int ch;
-    while ((ch = fgetc(fptr)) != EOF)
-    {
-        if (ch != EGGLET_MAGIC)
-        {
-            printf("error: incorrect first egglet byte: 0x%x should be 0x63\n", ch);
-            exit(1);
-        }
-        // Produce a fresh egg
-        ChickenEgg egg = produce_egg(fptr);
-
-        uint8_t computed_hash = check_hash(egg);
-        if (egg->hash == computed_hash)
-            printf("%s - correct hash\n", egg->pathname);
-        else
-            printf("%s - incorrect hash 0x%x should be 0x%x\n", egg->pathname, computed_hash, egg->hash);
-
-        // Eat that egg
-        eat_egg(egg);
-    }
-    fclose(fptr);
+    // Command C
+    check_C(egg_pathname);
 }
 
 // extract the files/directories stored in egg_pathname (subset 2 & 3)
 
 void extract_egg(char *egg_pathname)
 {
-
-    // REPLACE THIS PRINTF WITH YOUR CODE
-
-    printf("extract_egg called to extract egg: '%s'\n", egg_pathname);
+    // Command x
+     extract_x(egg_pathname);
 }
 
 // create egg_pathname containing the files or directories specified in pathnames (subset 3)
@@ -248,7 +229,7 @@ void get_hash(ChickenEgg egg, FILE *fptr)
     egg->hash = fgetc(fptr);
 }
 
-void list_contents_detail(char *egg_pathname)
+void list_L(char *egg_pathname)
 {
     FILE *fptr = fopen(egg_pathname, "r");
     if (fptr == NULL)
@@ -276,7 +257,7 @@ void list_contents_detail(char *egg_pathname)
     fclose(fptr);
 }
 
-void list_contents(char *egg_pathname)
+void list_l(char *egg_pathname)
 {
     FILE *fptr = fopen(egg_pathname, "r");
     if (fptr == NULL)
@@ -304,6 +285,7 @@ void list_contents(char *egg_pathname)
 
 uint8_t check_hash(ChickenEgg egg)
 {
+    // Iterate all the components except the egg->hash from hash = 00
     uint8_t hash = 0;
 
     hash = egglet_hash(hash, egg->magic_number);
@@ -333,4 +315,115 @@ uint8_t check_hash(ChickenEgg egg)
     }
 
     return hash;
+}
+
+void check_C(char *egg_pathname) {
+    // Call egglet_hash to calculate hash values.
+    FILE *fptr = fopen(egg_pathname, "r");
+    if (fptr == NULL)
+        error_warning("Cannot find current files.");
+    int ch;
+    while ((ch = fgetc(fptr)) != EOF)
+    {
+        if (ch != EGGLET_MAGIC)
+        {
+            printf("error: incorrect first egglet byte: 0x%x should be 0x63\n", ch);
+            exit(1);
+        }
+        // Produce a fresh egg
+        ChickenEgg egg = produce_egg(fptr);
+
+        // Computed the hash value
+        uint8_t computed_hash = check_hash(egg);
+        if (egg->hash == computed_hash)
+            printf("%s - correct hash\n", egg->pathname);
+        else
+            printf("%s - incorrect hash 0x%x should be 0x%x\n", egg->pathname, computed_hash, egg->hash);
+
+        // Eat that egg
+        eat_egg(egg);
+    }
+    fclose(fptr);
+}
+
+void extract_x(char *egg_pathname) {
+    // Call egglet_hash to calculate hash values.
+   FILE *fptr = fopen(egg_pathname, "r");
+    if (fptr == NULL)
+        error_warning("Cannot find current files.");
+    int ch;
+    while ((ch = fgetc(fptr)) != EOF)
+    {
+        if (ch != EGGLET_MAGIC)
+        {
+            printf("error: incorrect first egglet byte: 0x%x should be 0x%x\n", ch, EGGLET_MAGIC);
+            exit(1);
+        }
+        // Produce a fresh egg
+        ChickenEgg egg = produce_egg(fptr);
+
+        // get the path name array
+        char *pathname_array = get_pathname_array(egg);
+
+        // find the octal_digit
+        int octal_digit = get_octal_digit(egg);
+        // give permissions to the files
+        chmod(pathname_array, octal_digit);
+        free(pathname_array);
+
+        eat_egg(egg);
+    }
+    fclose(fptr);
+}
+
+char *get_pathname_array(ChickenEgg egg) {
+        // Copt the path names to a temp array.
+        char *array = calloc(sizeof(char), egg->pathname_length + 1);
+        strncpy(array, egg->pathname, egg->pathname_length);
+
+        FILE *f_out_ptr = fopen(array, "w");
+
+        // Extracting: hello.rs
+        printf("Extracting: %s\n", array);
+
+        // write the egg content to the output stream.
+        for (long i = 0; i < egg->content_length; i++) {
+            fputc(egg->content[i], f_out_ptr);
+            // printf("%c\n", egg->content[i]);
+        }
+        fclose(f_out_ptr);
+        
+        return array;
+}
+
+int get_octal_digit(ChickenEgg egg) {
+    int *array = calloc(sizeof(int), EGG_LENGTH_MODE + 1);
+    for(int i=1; i<EGG_LENGTH_MODE; i++){
+        if (egg->permissions[i] == '-') {
+            array[i] = 0;
+        }
+        else if (egg->permissions[i] == 'r') {
+            array[i] = 4;
+        }
+        else if (egg->permissions[i] == 'w') {
+            array[i] = 2;
+        }
+        else if (egg->permissions[i] == 'x') {
+            array[i] = 1;
+        }
+    }
+    int digit_one = 0;
+    int digit_two = 0;
+    int digit_three = 0;
+    for (int i = 0; i < EGG_LENGTH_MODE - 1; i++) {
+        if (i < 3)
+            digit_one += array[i];
+        if (i >= 3 && i < 6)
+            digit_two += array[i];
+        if (i >=6 && i < EGG_LENGTH_MODE - 1)
+            digit_three += array[i];
+    }
+    free(array);
+
+    return digit_one*64 + digit_two*8 + digit_three;
 }
