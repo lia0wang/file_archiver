@@ -53,12 +53,21 @@ void error_warning(char *words);
 void list_L(char *egg_pathname);
 void list_l(char *egg_pathname);
 
-// Subset 1 functions
+// Subset 1 functions:
 uint8_t check_hash(ChickenEgg egg);
 void check_C(char *egg_pathname);
 void extract_x(char *egg_pathname);
 char *get_pathname_array(ChickenEgg egg);
 int get_octal_digit(ChickenEgg egg);
+
+// Subset 2 functions:
+FILE *check_create_egg_condition(int append, char *egg_pathname);
+ChickenEgg produce_small_egg(int format, char *permissions, uint64_t content_length, char *pathnames, FILE *fptr);
+ChickenEgg *catch_eggs(FILE * fptr, int n_pathnames, char *pathnames[n_pathnames], int format);
+void eat_eggs(int length, ChickenEgg *egg);
+void write_to_egg_file(int length, ChickenEgg *egg, FILE *fptr_eggs);
+void create_C(char *egg_pathname, int append, int format,
+                int n_pathnames, char *pathnames[n_pathnames]);
 
 // print the files & directories stored in egg_pathname (subset 0)
 //
@@ -91,7 +100,7 @@ void check_egg(char *egg_pathname)
 void extract_egg(char *egg_pathname)
 {
     // Command x
-     extract_x(egg_pathname);
+    extract_x(egg_pathname);
 }
 
 // create egg_pathname containing the files or directories specified in pathnames (subset 3)
@@ -103,18 +112,9 @@ void extract_egg(char *egg_pathname)
 
 void create_egg(char *egg_pathname, int append, int format,
                 int n_pathnames, char *pathnames[n_pathnames])
-{
-
-    // REPLACE THIS CODE PRINTFS WITH YOUR CODE
-
-    printf("create_egg called to create egg: '%s'\n", egg_pathname);
-    printf("format = %x\n", format);
-    printf("append = %d\n", append);
-    printf("These %d pathnames specified:\n", n_pathnames);
-    for (int p = 0; p < n_pathnames; p++)
-    {
-        printf("%s\n", pathnames[p]);
-    }
+{   
+    // Command c
+    create_C(egg_pathname, append, format, n_pathnames, pathnames);
 }
 
 // ADD YOUR EXTRA FUNCTIONS HERE
@@ -283,9 +283,9 @@ void list_l(char *egg_pathname)
     fclose(fptr);
 }
 
+// Check the hash value from hash = 0 for every byte
 uint8_t check_hash(ChickenEgg egg)
 {
-    // Iterate all the components except the egg->hash from hash = 00
     uint8_t hash = 0;
 
     hash = egglet_hash(hash, egg->magic_number);
@@ -367,6 +367,7 @@ void extract_x(char *egg_pathname) {
 
         // find the octal_digit
         int octal_digit = get_octal_digit(egg);
+
         // give permissions to the files
         chmod(pathname_array, octal_digit);
         free(pathname_array);
@@ -429,4 +430,122 @@ int get_octal_digit(ChickenEgg egg) {
     free(array);
 
     return digit_one*64 + digit_two*8 + digit_three;
+}
+
+FILE *check_create_egg_condition(int append, char *egg_pathname) {
+    FILE *fptr;
+    // Overwrite if it is not appending
+    if (!append)
+        fptr = fopen(egg_pathname,"w");
+    // Append the file if the append is 1
+    else
+        fptr = fopen(egg_pathname,"a+");
+    
+    // Perror if the file is null
+    if (fptr == NULL)
+        error_warning(egg_pathname);
+
+    return fptr;
+}
+
+ChickenEgg produce_small_egg(int format, char *permissions, uint64_t content_length, char *pathnames, FILE *fptr) {
+    ChickenEgg small_egg = malloc(sizeof(e));
+    // Initialize the assigned values.
+    int pathnames_len = strlen(pathnames);
+    char *pathname = calloc((sizeof(char)), pathnames_len + 1);
+    strncpy(pathname, pathnames, pathnames_len);
+
+    // Assigned the values to each attribute by sequence.
+    small_egg->magic_number = EGGLET_MAGIC;
+    small_egg->egglet_format = format;
+    small_egg->permissions = permissions;
+    small_egg->pathname_length = pathnames_len;
+    small_egg->pathname = pathname;
+    small_egg->content_length = content_length;
+    get_content(small_egg, fptr);
+    small_egg->hash = fgetc(fptr);
+
+    return small_egg;
+}
+
+ChickenEgg *catch_eggs(FILE * fptr, int n_pathnames, char *pathnames[n_pathnames], int format) {
+    ChickenEgg *egg = malloc((sizeof(ChickenEgg)) * n_pathnames);
+
+    for (int p = 0; p < n_pathnames; p++)
+    {
+        printf("Adding: %s\n", pathnames[p]);
+
+        FILE *fptr = fopen(pathnames[p], "r");
+        struct stat s;
+        if (stat(pathnames[p], &s) != 0)
+            error_warning(pathnames[p]);
+        // Get the permissions
+        char *permissions = calloc(sizeof(char), EGG_LENGTH_MODE + 1);
+        permissions[0] = *(S_ISDIR(s.st_mode) ? "d" : "-");
+        permissions[1] = *((s.st_mode & S_IRUSR) ? "r" : "-");
+        permissions[2] = *((s.st_mode & S_IWUSR) ? "w" : "-");
+        permissions[3] = *((s.st_mode & S_IXUSR) ? "x" : "-");
+        permissions[4] = *((s.st_mode & S_IRGRP) ? "r" : "-");
+        permissions[5] = *((s.st_mode & S_IWGRP) ? "w" : "-");
+        permissions[6] = *((s.st_mode & S_IXGRP) ? "x" : "-");
+        permissions[7] = *((s.st_mode & S_IROTH) ? "r" : "-");
+        permissions[8] = *((s.st_mode & S_IWOTH) ? "w" : "-");
+        permissions[9] = *((s.st_mode & S_IXOTH) ? "x" : "-");
+
+        // Get the content length
+        uint64_t content_length = s.st_size;
+        // printf("content length is %llu\n", cont_len);
+        
+        // for each file in .egg, produce a small egg.
+        egg[p] = produce_small_egg(format, permissions, content_length, pathnames[p], fptr);
+        
+        fclose(fptr);
+    }
+
+    return egg;
+}
+
+void eat_eggs(int length, ChickenEgg *egg) {
+    for(int p = 0 ;p < length; p++) {
+        free(egg[p]);
+    }
+    free(egg);
+}
+
+void write_to_egg_file(int length, ChickenEgg *egg, FILE *fptr_eggs) {
+    for (int p = 0; p < length; p++) {
+        fputc(egg[p]->magic_number, fptr_eggs);
+        fputc(egg[p]->egglet_format, fptr_eggs);
+        for (int i = 0; i < EGG_LENGTH_MODE; i++) {
+        fputc(egg[p]->permissions[i], fptr_eggs);
+        }
+        char c  = 0;
+        for (int i = 0; i < EGG_LENGTH_PATHNLEN; i++)
+        {
+            c = (egg[p]->pathname_length >> (8 * i)) & 0xff;
+            fputc(c, fptr_eggs);
+        }
+        for (int i = 0; i < egg[p]->pathname_length; i++) {
+            fputc(egg[p]->pathname[i], fptr_eggs);
+        }
+        c  = 0;
+        for (int i = 0; i < EGG_LENGTH_CONTLEN; i++)
+        {
+            c = (egg[p]->content_length >> (8 * i)) & 0xff;
+            fputc(c, fptr_eggs);
+        }
+        for (int i = 0; i < egg[p]->content_length; i++) {
+            fputc(egg[p]->content[i], fptr_eggs);
+        }
+        fputc(check_hash(egg[p]), fptr_eggs);
+    }
+}
+
+// A function packages 4 functions 
+void create_C(char *egg_pathname, int append, int format,
+                int n_pathnames, char *pathnames[n_pathnames]) {
+    FILE *fptr_eggs = check_create_egg_condition(append, egg_pathname);
+    ChickenEgg *egg = catch_eggs(fptr_eggs, n_pathnames, pathnames, format);
+    write_to_egg_file(n_pathnames, egg, fptr_eggs);
+    eat_eggs(n_pathnames, egg);
 }
